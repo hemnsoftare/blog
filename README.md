@@ -88,21 +88,6 @@ A full-featured blog platform that allows users to create, manage, and interact 
 - Responsive design for mobile compatibility
 - Rich text editor for post creation
 
-### Backend
-
-- Node.js with Express.js (or your preferred backend)
-- RESTful API architecture
-- JWT for authentication
-- Password hashing with bcrypt
-
-### Database
-
-- MongoDB/PostgreSQL/MySQL (specify your choice)
-- User collection/table
-- Posts collection/table
-- Comments collection/table
-- Likes/Dislikes collection/table
-
 ### Additional Tools
 
 - Image upload and storage (AWS S3, Cloudinary, etc.)
@@ -130,17 +115,6 @@ npm run migrate
 
 # Start the development server
 npm run dev
-```
-
-## Environment Variables
-
-```
-DATABASE_URL=your_database_connection_string
-JWT_SECRET=your_jwt_secret_key
-EMAIL_SERVICE_API_KEY=your_email_service_key
-CLOUDINARY_URL=your_image_storage_url
-PORT=3000
-NODE_ENV=development
 ```
 
 ## Usage
@@ -199,16 +173,6 @@ We welcome contributions! Please follow these steps:
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## Security
-
-- All passwords are hashed using bcrypt
-- JWT tokens for secure authentication
-- Input validation and sanitization
-- CSRF protection
-- XSS prevention
-- SQL injection prevention
-- Rate limiting on API endpoints
-
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
@@ -224,7 +188,7 @@ For support, email support@yourblog.com or visit our FAQ page.
 - [ ] Advanced search functionality
 - [ ] User following system
 - [ ] Post sharing to social media
-- [ ] Analytics dashboard for authors
+- [ ] Analytics dashboard for auth ors
 - [ ] Mobile applications (iOS/Android)
 
 ## Acknowledgments
