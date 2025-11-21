@@ -1,3 +1,20 @@
+<template>
+  <section ref="sec" class="py-20 w-11/12 mx-auto">
+    <h2 class="text-3xl font-bold mb-10">How We Work</h2>
+
+    <div class="flex flex-col gap-12">
+      <PartTwoItem
+        v-for="(item, i) in items"
+        :key="i"
+        :reverse="i % 2 === 1"
+        :title="item.title"
+        :text="item.text"
+            :image="item.image"
+      />
+    </div>
+  </section>
+</template>
+
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import gsap from 'gsap'
