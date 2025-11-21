@@ -1,13 +1,46 @@
-// Path: feature-modules/information/About.vue
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import gsap from 'gsap'
+import ScrollTrigger from 'gsap/ScrollTrigger'
 
-<template>
-     <h1 class="text-red-300">About</h1> about page
+// Register GSAP plugin
+gsap.registerPlugin(ScrollTrigger)
 
-     <nav>
-      <ul>
-        <li><router-link to="/">Home</router-link></li>
-        <li><router-link to="/about">About</router-link></li>
-        <li><router-link to="/contact">Contact</router-link></li>
-      </ul>
-    </nav>
-</template>
+// Import sections
+import HeroAbout from './components/about/HeroAbout.vue'
+import PartOne from './components/about/SEC_one.vue'
+import PartTwo from './components/about/SEC_tow.vue'
+import PartThree from './components/about/SEC_three.vue'
+import PartFour from './components/about/SEC_four.vue'
+
+// Refs for scroll animations
+const heroRef = ref<HTMLElement | null>(null)
+const sec1Ref = ref<HTMLElement | null>(null)
+const sec2Ref = ref<HTMLElement | null>(null)
+const sec3Ref = ref<HTMLElement | null>(null)
+const sec4Ref = ref<HTMLElement | null>(null)
+
+onMounted(() => {
+  const sections = [
+    heroRef,
+    sec1Ref,
+    sec2Ref,
+    sec3Ref,
+    sec4Ref
+  ]
+
+  sections.forEach((sec) => {
+    gsap.from(sec.value, {
+      opacity: 0,
+      y: 60,
+      duration: 1,
+      ease: 'power3.out',
+      scrollTrigger: {
+        trigger: sec.value,
+        start: 'top 80%',
+        toggleActions: 'play none none reverse'
+      }
+    })
+  })
+})
+</script>
