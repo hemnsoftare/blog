@@ -5,9 +5,9 @@
     <form @submit.prevent="onSubmit" class="form">
       <!-- Email -->
       <div class="field">
-        <label for="email">Email</label>
+        <label for="email of person">Email</label>
         <input
-          id="email"
+          id="email of person"
           v-model="form.email"
           type="email"
           placeholder="you@example.com"
