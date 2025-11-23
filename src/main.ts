@@ -1,10 +1,8 @@
 import { createApp } from "vue";
 import "./style.css";
-import App from "./App.vue";
 import { createWebHistory, createRouter } from "vue-router"; // Use createWebHistory
-import Home from "../feature-modules/information/Home.vue";
-import About from "../feature-modules/information/About.vue";
-import Contact from "../feature-modules/information/Contact.vue";
+import App from "./App.vue";
+import { clerkPlugin } from "@clerk/vue";
 
 // Define routes
 const routes = [
@@ -23,6 +21,21 @@ const routes = [
     name: "contact",
     component: Contact,
   },
+  {
+    path: "/price",
+    name: "price",
+    component: Priceing,
+  },
+  {
+    path: "/create-blog",
+    name: "create-blog",
+    component: () => import("./pages/post/CreateBlog.vue"),
+  },
+  {
+    path: "/blog/:id",
+    name: "post-details",
+    component: () => import("./pages/post/PostDetails.vue"),
+  },
 ];
 
 // Create router instance
@@ -31,5 +44,17 @@ const router = createRouter({
   routes,
 });
 
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+import { VueQueryPlugin } from "@tanstack/vue-query";
+import Home from "./feature-modules/information/Home.vue";
+import About from "./feature-modules/information/About.vue";
+import Contact from "./feature-modules/information/Contact.vue";
+import Priceing from "./pages/Priceing.vue";
+
 // Mount the app
-createApp(App).use(router).mount("#app");
+createApp(App)
+  .use(router)
+  .use(clerkPlugin, { publishableKey: PUBLISHABLE_KEY })
+  .use(VueQueryPlugin)
+  .mount("#app");

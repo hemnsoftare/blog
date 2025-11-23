@@ -17,7 +17,7 @@
 
       <!-- Password -->
       <div class="field">
-        <label for="password">Password</label>
+        <label for="password">Password  </label>
         <input
           id="password"
           v-model="form.password"

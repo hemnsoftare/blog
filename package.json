@@ -9,10 +9,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@clerk/vue": "^1.14.9",
+    "@iconify/vue": "^5.0.0",
     "@tailwindcss/vite": "^4.1.14",
+    "@tanstack/vue-query": "^5.90.6",
+    "firebase": "^12.5.0",
+    "gsap": "^3.13.0",
+    "lucide-vue-next": "^0.552.0",
     "tailwindcss": "^4.1.14",
     "vue": "^3.5.22",
-    "vue-router": "^4.6.3"
+    "vue-router": "^4.6.3",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/node": "^24.6.0",
