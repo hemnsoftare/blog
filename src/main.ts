@@ -5,7 +5,7 @@ import { createWebHistory, createRouter } from "vue-router"; // Use createWebHis
 import Home from "../feature-modules/information/Home.vue";
 import About from "../feature-modules/information/About.vue";
 import Contact from "../feature-modules/information/Contact.vue";
-
+// 
 // Define routes
 const routes = [
   {
