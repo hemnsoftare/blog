@@ -1,3 +1,8 @@
+<script setup lang="ts">
+import PostDetails from '../../feature-modules/post/PostDetails.vue';
+
+</script>
+
 <template>
-     <h1 class="text-red-300">Post Details</h1>
+  <PostDetails />
 </template>
