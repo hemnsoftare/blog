@@ -1,4 +1,3 @@
-<!-- src/components/navbar/Navbar.vue -->
 <template>
   <header class="bg-white shadow-md">
     <nav class="container mx-auto px-4 py-3">
@@ -23,13 +22,11 @@
     </nav>
   </header>
 </template>
-
 <script setup lang="ts">
 import { useUser, SignInButton } from '@clerk/vue'
 import SearchBar from './SearchBar.vue'
 import NavLinks from './NavLinks.vue'
 import ProfileDropdown from './ProfileDropdown.vue'
-
 
 const { user } = useUser()
 

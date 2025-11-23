@@ -1,4 +1,3 @@
-<!-- src/components/navbar/SearchBar.vue -->
 <template>
   <div class="relative w-1/2">
     <input

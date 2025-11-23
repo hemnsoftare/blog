@@ -107,7 +107,6 @@
     </nav>
   </header>
 </template>
-
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useUser, SignInButton, useClerk } from '@clerk/vue';
