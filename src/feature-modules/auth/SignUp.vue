@@ -11,7 +11,7 @@
       <p v-if="error" class="error">{{ error }}</p>
 
       <button :disabled="loading">
-        {{ loading ? "Creating..." : "Sign Up" }}
+        {{ loading ? "Creating your account..." : "Sign Up" }}
       </button>
 
       <p class="login-link">
@@ -24,7 +24,10 @@
 
 <script setup>
 import { ref } from "vue"
+import { useRouter } from "vue-router"
 import axios from "axios"
+
+const router = useRouter()
 
 const username = ref("")
 const email = ref("")
@@ -36,28 +39,33 @@ const loading = ref(false)
 const handleSignup = async () => {
   error.value = ""
 
+  // Validation
   if (password.value !== confirmPassword.value) {
     error.value = "Passwords do not match"
+    return
+  }
+
+  if (password.value.length < 6) {
+    error.value = "Password must be at least 6 characters"
     return
   }
 
   loading.value = true
 
   try {
-    // Replace with your backend endpoint
-    const res = await axios.post("https://yourapi.com/signup", {
-      username: username.value,
-      email: email.value,
+    const response = await axios.post("https://yourapi.com/signup", {
+      username: username.value.trim(),
+      email: email.value.trim(),
       password: password.value
     })
 
-    console.log("Signup success:", res.data)
+    console.log("Signup successful:", response.data)
 
-    // Example: redirect after signup
-    window.location.href = "/login"
+    // Redirect to login page
+    router.push("/login")
 
   } catch (err) {
-    error.value = err.response?.data?.message || "Signup failed"
+    error.value = err.response?.data?.message || "Signup failed. Try again."
   } finally {
     loading.value = false
   }
@@ -92,6 +100,11 @@ input {
   border-radius: 6px;
   border: 1px solid #cbd5e1;
   margin-bottom: 10px;
+  outline: none;
+}
+
+input:focus {
+  border-color: #10b981;
 }
 
 button {
@@ -103,10 +116,16 @@ button {
   border: none;
   cursor: pointer;
   font-weight: bold;
+  transition: 0.3s;
+}
+
+button:hover {
+  background: #059669;
 }
 
 button:disabled {
   background: #9ca3af;
+  cursor: not-allowed;
 }
 
 .error {
