@@ -5,7 +5,7 @@
     <form @submit.prevent="onSubmit" class="form">
       <!-- Email -->
       <div class="field">
-        <label for="email of person">Email</label>
+        <label for="email">Email of user</label>
         <input
           id="email of person"
           v-model="form.email"
@@ -29,7 +29,7 @@
       </div>
 
       <!-- Error message -->
-      <p v-if="error" class="error">
+      <p v-if="error" class="error  ">
         {{ error }}
       </p>
 
