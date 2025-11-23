@@ -42,4 +42,3 @@ const emit = defineEmits<PlanEmit>();
   transition: transform 0.3s ease;
 }
 </style>
-
