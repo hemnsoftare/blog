@@ -11,6 +11,6 @@ export default {
 </script>
 
 <style>
-/* Add your global styles here added */
+/* Add your globalf  styles here addedkhjkgjk */
 </style>
     
