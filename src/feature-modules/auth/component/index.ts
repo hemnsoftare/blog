@@ -1,5 +1,6 @@
 // Export all auth components for easier imports
 export { default as FormInput } from './FormInput.vue'
+export { default as FormTextarea } from './FormTextarea.vue'
 export { default as FormButton } from './FormButton.vue'
 export { default as ErrorMessage } from './ErrorMessage.vue'
 export { default as PasswordStrength } from './PasswordStrength.vue'
