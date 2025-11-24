@@ -12,8 +12,8 @@ const ACCEPTED_IMAGE_TYPES = [
   "image/gif",
 ]
 
-// Safe file type check (prevents SSR crash)
-const isFile = (value: unknown) =>
+// Safe file guard for browser + SSR
+const isFile = (value: unknown): value is File =>
   typeof window !== "undefined" && value instanceof File
 
 export const createBlogSchema = z.object({
@@ -28,19 +28,17 @@ export const createBlogSchema = z.object({
     .max(5000, "Description must not exceed 5000 characters"),
 
   image: z
-    .custom<File>((file) => isFile(file), {
+    .custom<File>((value): value is File => isFile(value), {
       message: "Image is required",
     })
-    .refine((file) => (file as File).size <= MAX_FILE_SIZE, {
+    .refine((file: File) => file.size <= MAX_FILE_SIZE, {
       message: "Image must be less than 10MB",
     })
-    .refine((file) => ACCEPTED_IMAGE_TYPES.includes((file as File).type), {
+    .refine((file: File) => ACCEPTED_IMAGE_TYPES.includes(file.type), {
       message: "Invalid image format. Only JPG, PNG, WEBP or GIF allowed",
     }),
 
-  author: z
-    .string()
-    .min(1, "Author name is required"),
+  author: z.string().min(1, "Author name is required"),
 
   date: z.string(),
 
