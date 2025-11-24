@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, reactive } from "vue"
+import { ref, computed, reactive, onMounted } from "vue"
 import { useUser } from "@clerk/vue"
 import BlogPreview from "./compoennt/BlogPreview.vue"
 import { useCreateBlog } from "./useCreatePost"
@@ -14,6 +14,7 @@ const description = ref("")
 const imageFile = ref<File | null>(null)
 const imagePreview = ref<string | null>(null)
 const showPreview = ref(false)
+const isMounted = ref(false)
 
 const { mutate: createBlog, isPending } = useCreateBlog()
 
@@ -23,22 +24,27 @@ const errors = reactive({
   image: "",
 })
 
+// Fade-in after mount
+onMounted(() => {
+  isMounted.value = true
+})
+
 // Date
 const currentDate = computed(() => {
   return new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
-    day: "numeric",
+    day: "numeric"
   })
 })
 
-// Author name
+// Author
 const authorName = computed(() => {
   if (!user.value) return "Anonymous"
   return user.value.fullName || user.value.firstName || user.value.username || "Anonymous"
 })
 
-// Image
+// Image handling
 const handleImage = (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
@@ -53,10 +59,10 @@ const removeImage = () => {
   imagePreview.value = null
 }
 
-// Preview toggle
+// Toggle preview
 const togglePreview = () => {
   if (!title.value || !description.value) {
-    alert("Fill title and description to preview.")
+    alert("Please complete title and description to preview.")
     return
   }
   showPreview.value = !showPreview.value
@@ -94,32 +100,35 @@ const handleSubmit = () => {
       image: imagePreview.value,
       authorName: validatedData.author,
       date: validatedData.date,
-      authorImage: user.value?.imageUrl || "",
+      authorImage: user.value?.imageUrl || ""
     },
     {
       onSuccess: () => router.push("/"),
-      onError: (error) => alert("Error: " + error.message),
+      onError: (e) => alert("Error creating blog: " + e.message)
     }
   )
 }
 </script>
 
 <template>
-  <div class="page-container">
-    <div class="max-w-4xl mx-auto">
+  <div :class="['page', isMounted && 'visible']">
+    <div class="container">
 
       <!-- Header -->
       <div class="header">
-        <h1>Create a New Blog</h1>
+        <div>
+          <h1>Create a New Blog</h1>
+          <p>Write something beautiful ✍️</p>
+        </div>
 
-        <button @click="togglePreview" class="preview-btn">
+        <button class="preview-toggle" @click="togglePreview">
           {{ showPreview ? "Edit" : "Preview" }}
         </button>
       </div>
 
-      <!-- Switch animation -->
-      <transition name="fade-slide" mode="out-in">
+      <transition name="view-switch" mode="out-in">
 
+        <!-- Preview Mode -->
         <BlogPreview
           v-if="showPreview"
           :title="title"
@@ -129,55 +138,69 @@ const handleSubmit = () => {
           :date="currentDate"
         />
 
-        <div v-else class="form-card">
-          <form @submit.prevent="handleSubmit" class="space-y-6">
+        <!-- Form Mode -->
+        <div v-else class="editor-card">
 
-            <!-- Author -->
-            <div class="author-row">
-              <div class="avatar">{{ authorName.charAt(0) }}</div>
-              <div>
-                <div class="author-name">{{ authorName }}</div>
-                <div class="date">{{ currentDate }}</div>
-              </div>
+          <!-- User Info -->
+          <div class="user-bar">
+            <div class="avatar">
+              {{ authorName.charAt(0).toUpperCase() }}
             </div>
+            <div>
+              <p class="name">{{ authorName }}</p>
+              <span class="date">{{ currentDate }}</span>
+            </div>
+          </div>
+
+          <form @submit.prevent="handleSubmit" class="form">
 
             <!-- Title -->
             <div>
-              <input v-model="title" placeholder="Enter blog title" class="input-box" />
-              <span class="error" v-if="errors.title">{{ errors.title }}</span>
+              <input
+                v-model="title"
+                placeholder="Enter blog title..."
+                class="input"
+              />
+              <span class="err" v-if="errors.title">{{ errors.title }}</span>
             </div>
 
-            <!-- Image -->
+            <!-- Image Upload -->
             <div>
-              <div v-if="!imagePreview" class="upload-card">
-                <input type="file" class="hidden" id="upload" @change="handleImage" />
-                <label for="upload">
-                  Click to upload image
-                </label>
+              <div v-if="!imagePreview" class="drop-box">
+                <label for="imgUpload">Upload a cover image</label>
+                <input id="imgUpload" type="file" hidden @change="handleImage" />
               </div>
 
-              <div v-else class="image-wrap">
+              <div v-else class="image-preview">
                 <img :src="imagePreview" />
-                <button type="button" @click="removeImage">Remove</button>
+                <button type="button" class="remove-btn" @click="removeImage">
+                  Remove
+                </button>
               </div>
 
-              <span class="error" v-if="errors.image">{{ errors.image }}</span>
+              <span class="err" v-if="errors.image">{{ errors.image }}</span>
             </div>
 
             <!-- Description -->
             <div>
-              <textarea v-model="description" rows="6" class="text-box"></textarea>
-              <span class="error" v-if="errors.description">{{ errors.description }}</span>
+              <textarea
+                v-model="description"
+                rows="6"
+                placeholder="Write something meaningful..."
+                class="textarea"
+              />
+              <span class="char-count">{{ description.length }} chars</span>
+              <span class="err" v-if="errors.description">{{ errors.description }}</span>
             </div>
 
-            <!-- Buttons -->
+            <!-- Actions -->
             <div class="actions">
-              <button type="button" @click="togglePreview" class="btn secondary">
+              <button type="button" class="ghost" @click="togglePreview">
                 Preview
               </button>
 
-              <button type="submit" class="btn primary">
-                {{ isPending ? "Creating..." : "Create Blog" }}
+              <button type="submit" class="primary">
+                {{ isPending ? "Publishing…" : "Publish Blog" }}
               </button>
             </div>
 
@@ -189,15 +212,21 @@ const handleSubmit = () => {
 </template>
 
 <style scoped>
-/* Page entrance */
-.page-container {
-  padding: 3rem 1rem;
-  animation: fadeIn 0.6s ease;
+.page {
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: 0.6s ease;
+}
+.page.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+.container {
+  max-width: 850px;
+  margin: auto;
 }
 
 .header {
@@ -206,105 +235,115 @@ const handleSubmit = () => {
   margin-bottom: 2rem;
 }
 
-.preview-btn {
-  padding: 8px 16px;
-  border-radius: 10px;
+.preview-toggle {
   background: #2563eb;
   color: white;
-  transition: transform .2s ease;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: 0.2s;
 }
-.preview-btn:hover { transform: scale(1.05); }
+.preview-toggle:hover { transform: scale(1.05); }
 
-.fade-slide-enter-active,
-.fade-slide-leave-active {
-  transition: 0.4s ease all;
+.view-switch-enter-active,
+.view-switch-leave-active {
+  transition: 0.4s ease;
 }
-.fade-slide-enter-from {
+.view-switch-enter-from {
   opacity: 0;
-  transform: translateY(15px);
+  transform: translateY(20px);
 }
-.fade-slide-leave-to {
+.view-switch-leave-to {
   opacity: 0;
-  transform: translateY(-15px);
+  transform: translateY(-20px);
 }
 
-.form-card {
+.editor-card {
   background: white;
   padding: 2rem;
   border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+}
+
+.user-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
 .avatar {
   background: #2563eb;
   color: white;
-  border-radius: 999px;
-  width: 40px;
-  height: 40px;
+  height: 42px;
+  width: 42px;
+  border-radius: 20px;
   display:flex;
   align-items:center;
   justify-content:center;
   font-weight:bold;
 }
 
-.author-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.input-box,
-.text-box {
+.input, .textarea {
   width: 100%;
   padding: 12px;
-  border-radius: 12px;
-  border: 1px solid #ddd;
-}
-
-.upload-card {
-  padding: 1rem;
-  border: 2px dashed #ccc;
   border-radius: 10px;
-  cursor: pointer;
-  text-align: center;
+  border: 1px solid #ddd;
+  margin-top: 10px;
 }
 
-.image-wrap img {
-  width: 100%;
-  border-radius: 15px;
-  transition: transform 0.3s;
+.drop-box {
+  border: 2px dashed #ccc;
+  padding: 30px;
+  text-align:center;
+  border-radius: 12px;
+  cursor: pointer;
 }
-.image-wrap img:hover {
-  transform: scale(1.05);
+
+.image-preview img {
+  width: 100%;
+  border-radius: 12px;
+  transition: transform .3s;
+}
+.image-preview img:hover {
+  transform: scale(1.04);
+}
+
+.remove-btn {
+  margin-top: 8px;
+  color: red;
 }
 
 .actions {
   display: flex;
   gap: 10px;
+  margin-top: 20px;
 }
-
-.btn {
-  flex: 1;
-  padding: 12px;
-  border-radius: 12px;
-  transition: transform 0.2s;
-}
-
-.btn:hover { transform: scale(1.03); }
 
 .primary {
+  flex: 1;
   background: #2563eb;
   color: white;
+  padding: 12px;
+  border-radius: 12px;
 }
 
-.secondary {
-  background: #f3f4f6;
+.ghost {
+  flex: 1;
+  background: #f1f5f9;
+  padding: 12px;
+  border-radius: 12px;
 }
 
-.error {
+.err {
   color: red;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   margin-top: 5px;
   display: block;
+}
+
+.char-count {
+  font-size: 0.8rem;
+  color: gray;
+  display: block;
+  text-align: right;
 }
 </style>
