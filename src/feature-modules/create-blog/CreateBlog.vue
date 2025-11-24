@@ -5,6 +5,7 @@ import BlogPreview from "./compoennt/BlogPreview.vue"
 import { useCreateBlog } from "./useCreatePost"
 import { useRouter } from "vue-router"
 import { createBlogSchema } from "./createBlog.schema"
+import { FormInput, FormTextarea, FormButton, ErrorMessage } from "../auth/component"
 
 // Clerk
 const { user } = useUser()
@@ -26,6 +27,8 @@ const errors = reactive({
   description: "",
   image: "",
 })
+
+const generalError = ref("")
 
 // Computed values
 const authorName = computed<string>(() => {
@@ -80,6 +83,11 @@ const handleImageInput = (event: Event) => {
 const removeImage = () => {
   imageFile.value = null
   imagePreview.value = null
+  // Reset file input
+  const fileInput = document.getElementById('image-upload') as HTMLInputElement
+  if (fileInput) {
+    fileInput.value = ''
+  }
 }
 
 // ✅ Toggle preview
@@ -97,6 +105,7 @@ const handleSubmit = () => {
   errors.title = ""
   errors.description = ""
   errors.image = ""
+  generalError.value = ""
 
   const result = createBlogSchema.safeParse({
     title: title.value,
@@ -110,7 +119,11 @@ const handleSubmit = () => {
   if (!result.success) {
     result.error.issues.forEach((issue) => {
       const field = issue.path[0] as keyof typeof errors
-      errors[field] = issue.message
+      if (field in errors) {
+        errors[field] = issue.message
+      } else {
+        generalError.value = issue.message
+      }
     })
     return
   }
@@ -132,7 +145,7 @@ const handleSubmit = () => {
         router.push("/")
       },
       onError: (error) => {
-        alert("Error creating blog: " + error.message)
+        generalError.value = "Error creating blog: " + error.message
       },
     }
   )
@@ -145,9 +158,23 @@ const handleSubmit = () => {
     <!-- Header -->
     <div class="header">
       <h1>Create Blog</h1>
-      <button @click="togglePreview">
-        {{ showPreview ? "Edit" : "Preview" }}
-      </button>
+      <FormButton
+        v-if="!showPreview"
+        type="button"
+        variant="outline"
+        @click="togglePreview"
+        :disabled="!title || !description"
+      >
+        Preview
+      </FormButton>
+      <FormButton
+        v-else
+        type="button"
+        variant="outline"
+        @click="togglePreview"
+      >
+        Edit
+      </FormButton>
     </div>
 
     <!-- Preview Mode -->
@@ -162,61 +189,242 @@ const handleSubmit = () => {
 
     <!-- Form Mode -->
     <div v-else class="editor">
+      <form @submit.prevent="handleSubmit">
+        <!-- Title -->
+        <FormInput
+          v-model="title"
+          label="Blog Title"
+          type="text"
+          placeholder="Enter a captivating title..."
+          :error="errors.title"
+          :required="true"
+        />
 
-      <!-- Title -->
-      <input v-model="title" placeholder="Blog title..." />
-      <p class="err">{{ errors.title }}</p>
+        <!-- Description -->
+        <FormTextarea
+          v-model="description"
+          label="Blog Content"
+          placeholder="Write your blog content here..."
+          :error="errors.description"
+          :required="true"
+          :rows="10"
+          :show-char-count="true"
+          :max-length="5000"
+        />
 
-      <!-- Description -->
-      <textarea v-model="description" rows="5" placeholder="Write description..."></textarea>
-      <p class="err">{{ errors.description }}</p>
+        <!-- Image Upload -->
+        <div class="image-upload-section">
+          <label class="image-label">
+            Cover Image
+            <span class="required">*</span>
+          </label>
+          <div class="image-upload-container">
+            <input
+              type="file"
+              accept="image/*"
+              @change="handleImageInput"
+              class="file-input"
+              id="image-upload"
+            />
+            <label for="image-upload" class="file-label">
+              <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>{{ imagePreview ? 'Change Image' : 'Choose Image' }}</span>
+            </label>
+          </div>
+          
+          <div v-if="imagePreview" class="image-preview-container">
+            <img :src="imagePreview" class="preview" alt="Preview" />
+            <button type="button" @click="removeImage" class="remove-image-btn">
+              <svg viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+              Remove
+            </button>
+          </div>
+          
+          <p v-if="errors.image" class="error-text">{{ errors.image }}</p>
+        </div>
 
-      <!-- Image -->
-      <input type="file" @change="handleImageInput" />
+        <!-- Error Message -->
+        <ErrorMessage
+          v-if="generalError"
+          :message="generalError"
+          variant="error"
+        />
 
-      <img v-if="imagePreview" :src="imagePreview" class="preview" />
-      <button v-if="imagePreview" @click="removeImage">Remove Image</button>
-
-      <p class="err">{{ errors.image }}</p>
-
-      <!-- Submit -->
-      <button @click="handleSubmit">
-        {{ isPending ? "Creating..." : "Publish Blog" }}
-      </button>
-
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+          <FormButton
+            type="button"
+            variant="outline"
+            @click="togglePreview"
+            :disabled="!title || !description"
+          >
+            Preview
+          </FormButton>
+          <FormButton
+            type="submit"
+            variant="primary"
+            :loading="isPending"
+            full-width
+          >
+            Publish Blog
+          </FormButton>
+        </div>
+      </form>
     </div>
   </div>
 </template>
 
 <style scoped>
 .page {
-  max-width: 700px;
+  max-width: 900px;
   margin: auto;
-  padding: 20px;
+  padding: 2rem;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 15px;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
 }
 
 .editor {
   background: white;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.image-upload-section {
+  margin-bottom: 1.5rem;
+}
+
+.image-label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.required {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+.image-upload-container {
+  position: relative;
+}
+
+.file-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.file-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 2px dashed #d1d5db;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #f9fafb;
+}
+
+.file-label:hover {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.upload-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #6b7280;
+}
+
+.file-label span {
+  color: #374151;
+  font-weight: 500;
+}
+
+.image-preview-container {
+  position: relative;
+  margin-top: 1rem;
 }
 
 .preview {
   width: 100%;
-  margin-top: 10px;
-  border-radius: 10px;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  border: 2px solid #e5e7eb;
 }
 
-.err {
-  color: red;
-  font-size: 13px;
-  margin-top: 4px;
+.remove-image-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: background 0.2s;
+}
+
+.remove-image-btn:hover {
+  background: #dc2626;
+}
+
+.remove-image-btn svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.error-text {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 1rem;
+  }
+
+  .editor {
+    padding: 1.5rem;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+  }
 }
 </style>
