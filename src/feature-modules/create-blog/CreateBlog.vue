@@ -15,10 +15,15 @@ const imageFile = ref<File | null>(null)
 const imagePreview = ref<string | null>(null)
 const showPreview = ref(false)
 
-// Create blog mutation
 const { mutate: createBlog, isPending } = useCreateBlog()
 
-// Date
+const errors = reactive({
+  title: "",
+  description: "",
+  image: "",
+})
+
+// Date format
 const currentDate = computed(() => {
   return new Date().toLocaleDateString("en-US", {
     year: "numeric",
@@ -27,32 +32,17 @@ const currentDate = computed(() => {
   })
 })
 
-// Author name fallback
+// Author
 const authorName = computed(() => {
   const data = user.value
-
   if (!data) return "Anonymous"
-
-  return (
-    data.fullName ||
-    data.firstName ||
-    data.username ||
-    "Anonymous"
-  )
+  return data.fullName || data.firstName || data.username || "Anonymous"
 })
 
-// Errors
-const errors = reactive({
-  title: "",
-  description: "",
-  image: "",
-})
-
-// Handle image upload
+// Upload image
 const handleImage = (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
-
   if (file) {
     imageFile.value = file
     imagePreview.value = URL.createObjectURL(file)
@@ -65,7 +55,7 @@ const removeImage = () => {
   imagePreview.value = null
 }
 
-// Toggle preview mode
+// Toggle preview
 const togglePreview = () => {
   if (!title.value || !description.value) {
     alert("Please fill in title and description to preview.")
@@ -74,7 +64,7 @@ const togglePreview = () => {
   showPreview.value = !showPreview.value
 }
 
-// Submit blog
+// Submit
 const handleSubmit = () => {
   errors.title = ""
   errors.description = ""
@@ -110,107 +100,187 @@ const handleSubmit = () => {
     },
     {
       onSuccess: () => router.push("/"),
-      onError: (error) =>
-        alert("Error creating blog: " + error.message),
+      onError: (error) => alert("Error creating blog: " + error.message),
     }
   )
 }
 </script>
 
 <template>
-  <div class="min-h-screen py-8">
+  <div class="min-h-screen py-8 animate-container">
     <div class="max-w-4xl mx-auto px-4">
 
       <!-- Header -->
       <div class="flex items-center justify-between mb-8">
-        <h1 class="text-3xl font-bold text-gray-800">Create a New Blog</h1>
+        <h1 class="text-3xl font-bold text-gray-800 animate-fade">Create a New Blog</h1>
 
-        <button
-          @click="togglePreview"
-          class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-        >
+        <button @click="togglePreview" class="btn-animate">
           {{ showPreview ? "Edit" : "Preview" }}
         </button>
       </div>
 
-      <!-- Preview Mode -->
-      <BlogPreview
-        v-if="showPreview"
-        :title="title"
-        :description="description"
-        :image="imagePreview"
-        :author="authorName"
-        :date="currentDate"
-      />
+      <!-- Switch Animation -->
+      <transition name="fade-slide" mode="out-in">
+        <BlogPreview
+          v-if="showPreview"
+          :key="'preview'"
+          :title="title"
+          :description="description"
+          :image="imagePreview"
+          :author="authorName"
+          :date="currentDate"
+        />
 
-      <!-- Edit Mode -->
-      <div v-else class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
-        <form @submit.prevent="handleSubmit" class="space-y-6">
+        <div
+          v-else
+          :key="'form'"
+          class="bg-white rounded-2xl shadow-sm border p-6 md:p-8"
+        >
+          <form @submit.prevent="handleSubmit" class="space-y-6">
 
-          <!-- Author Info -->
-          <div class="flex items-center gap-3 pb-4 border-b border-gray-100">
-            <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
-              {{ authorName.charAt(0).toUpperCase() }}
+            <!-- Author -->
+            <div class="flex items-center gap-3 pb-4 border-b">
+              <div class="avatar animate-pop">
+                {{ authorName.charAt(0).toUpperCase() }}
+              </div>
+              <div>
+                <p class="font-medium">{{ authorName }}</p>
+                <p class="text-sm text-gray-500">{{ currentDate }}</p>
+              </div>
             </div>
+
+            <!-- Title -->
             <div>
-              <p class="font-medium text-gray-800">{{ authorName }}</p>
-              <p class="text-sm text-gray-500">{{ currentDate }}</p>
-            </div>
-          </div>
-
-          <!-- Title -->
-          <div>
-            <label class="block text-sm font-medium mb-2">Blog Title</label>
-            <input
-              v-model="title"
-              type="text"
-              class="w-full p-3 border rounded-xl"
-            />
-            <p v-if="errors.title" class="text-sm text-red-500">{{ errors.title }}</p>
-          </div>
-
-          <!-- Image -->
-          <div>
-            <label class="text-sm font-medium mb-2 block">Cover Image</label>
-
-            <div v-if="!imagePreview">
-              <input type="file" @change="handleImage" />
+              <input
+                v-model="title"
+                placeholder="Blog Title"
+                class="input-field"
+              />
+              <p v-if="errors.title" class="text-red-500 text-sm">{{ errors.title }}</p>
             </div>
 
-            <div v-else>
-              <img :src="imagePreview" class="w-full h-64 object-cover rounded-lg" />
-              <button type="button" @click="removeImage" class="text-red-500 mt-2">
-                Remove Image
+            <!-- Image -->
+            <div>
+              <div v-if="!imagePreview" class="upload-box">
+                <input type="file" class="hidden" id="img" @change="handleImage" />
+                <label for="img" class="cursor-pointer">Click to upload image</label>
+              </div>
+
+              <div v-else class="image-preview">
+                <img :src="imagePreview" class="preview-img" />
+                <button type="button" @click="removeImage">Remove</button>
+              </div>
+
+              <p v-if="errors.image" class="text-red-500 text-sm">{{ errors.image }}</p>
+            </div>
+
+            <!-- Description -->
+            <div>
+              <textarea
+                v-model="description"
+                rows="6"
+                placeholder="Write your blog..."
+                class="textarea-field"
+              ></textarea>
+              <p v-if="errors.description" class="text-red-500 text-sm">{{ errors.description }}</p>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex gap-3 pt-4">
+              <button type="button" @click="togglePreview" class="btn-secondary">Preview</button>
+              <button type="submit" class="btn-primary">
+                {{ isPending ? "Creating..." : "Create Blog" }}
               </button>
             </div>
 
-            <p v-if="errors.image" class="text-red-500 text-sm mt-1">
-              {{ errors.image }}
-            </p>
-          </div>
-
-          <!-- Description -->
-          <div>
-            <label>Description</label>
-            <textarea v-model="description" rows="6" class="w-full p-3 border rounded-xl"></textarea>
-            <p v-if="errors.description" class="text-red-500 text-sm">
-              {{ errors.description }}
-            </p>
-          </div>
-
-          <!-- Buttons -->
-          <div class="flex gap-3 pt-4">
-            <button type="button" @click="togglePreview" class="flex-1 bg-gray-200 p-3 rounded-xl">
-              Preview
-            </button>
-
-            <button type="submit" class="flex-1 bg-blue-600 text-white p-3 rounded-xl">
-              {{ isPending ? "Creating..." : "Create Blog" }}
-            </button>
-          </div>
-
-        </form>
-      </div>
+          </form>
+        </div>
+      </transition>
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Overall fade */
+.animate-container {
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Transition between views */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.4s ease;
+}
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+/* Button animation */
+.btn-animate {
+  padding: 8px 16px;
+  background: #2563eb;
+  color: white;
+  border-radius: 10px;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.btn-animate:hover {
+  transform: scale(1.05);
+  background: #1d4ed8;
+}
+.btn-animate:active {
+  transform: scale(0.95);
+}
+
+/* Avatar animation */
+.animate-pop {
+  animation: pop 0.5s ease;
+}
+@keyframes pop {
+  from { transform: scale(0.7); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Image hover */
+.preview-img {
+  width: 100%;
+  border-radius: 12px;
+  transition: transform 0.4s ease;
+}
+.preview-img:hover {
+  transform: scale(1.05);
+}
+
+/* Inputs */
+.input-field, .textarea-field {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+}
+
+/* Buttons */
+.btn-primary {
+  background: #2563eb;
+  color: white;
+  padding: 12px;
+  border-radius: 12px;
+  width: 100%;
+}
+
+.btn-secondary {
+  background: #f1f5f9;
+  padding: 12px;
+  border-radius: 12px;
+  width: 100%;
+}
+</style>
