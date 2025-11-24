@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted, watch } from "vue"
 import { useUser } from "@clerk/vue"
-import BlogPreview from "./component/BlogPreview.vue"
+import BlogPreview from "./BlogPreview.vue"
 import { useCreateBlog } from "./useCreatePost"
 import { useRouter } from "vue-router"
 import { createBlogSchema } from "./createBlog.schema"
