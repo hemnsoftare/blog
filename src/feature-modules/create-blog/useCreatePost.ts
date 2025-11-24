@@ -5,53 +5,44 @@ import { createBlogPost, updateBlogPost } from "./action";
 
 /**
  * Hook: useCreateBlog
- * Handles creating new blog posts with TanStack Query
+ * Handles creating new blog posts using TanStack Query
  */
 export function useCreateBlog() {
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async (
-      post: Omit<
-        BlogPost,
-        "id" | "likes" | "dislikes" | "createdAt" | "updatedAt"
-      >
-    ) => {
-      return await createBlogPost(post);
-    },
+    mutationFn: (post: Omit<BlogPost, "id" | "likes" | "dislikes" | "createdAt" | "updatedAt">) =>
+      createBlogPost(post),
+
     onSuccess: () => {
-      // ✅ Invalidate blog queries so new post appears
-      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      // Refresh blog list after creation
+      qc.invalidateQueries({ queryKey: ["posts"] });
     },
-    onError: (error) => {
-      console.error("Failed to create blog:", error);
+
+    onError: (err) => {
+      console.error("❌ Error creating blog:", err);
     },
   });
 }
 
 /**
  * Hook: useUpdateBlog
- * Handles updating existing blog posts with TanStack Query
+ * Handles updating existing blog posts using TanStack Query
  */
 export function useUpdateBlog() {
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      postId,
-      updatedData,
-    }: {
-      postId: string;
-      updatedData: Partial<BlogPost>;
-    }) => {
-      await updateBlogPost(postId, updatedData);
-    },
+    mutationFn: ({ postId, updatedData }: { postId: string; updatedData: Partial<BlogPost> }) =>
+      updateBlogPost(postId, updatedData),
+
     onSuccess: () => {
-      // ✅ Invalidate posts cache so UI updates
-      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      // Refresh blog list after update
+      qc.invalidateQueries({ queryKey: ["posts"] });
     },
-    onError: (error) => {
-      console.error("Failed to update blog:", error);
+
+    onError: (err) => {
+      console.error("❌ Error updating blog:", err);
     },
   });
 }
