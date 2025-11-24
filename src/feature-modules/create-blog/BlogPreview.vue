@@ -1,124 +1,135 @@
 <script setup lang="ts">
-const props = defineProps<{
-  title: string
-  description: string
-  image?: string | null
-  author: string
-  date: string
-}>()
+import { ref, computed, reactive } from "vue"
+import BlogPreview from "./BlogPreview.vue"
 
-const displayTitle = props.title || "Untitled Blog Post"
-const displayDescription = props.description || "No description provided..."
-const authorInitial = props.author.charAt(0).toUpperCase()
-const readTime = Math.ceil((props.description?.length || 0) / 200)
+const title = ref("")
+const description = ref("")
+const imagePreview = ref<string | null>(null)
+const showPreview = ref(false)
+
+const errors = reactive({
+  title: "",
+  description: "",
+  image: "",
+})
+
+// Date
+const currentDate = computed(() =>
+  new Date().toLocaleDateString()
+)
+
+// Fake author (change later)
+const authorName = ref("Anonymous")
+
+// Image preview
+const handleImageInput = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+
+  if (!file) return
+  imagePreview.value = URL.createObjectURL(file)
+}
+
+// Preview toggle
+const togglePreview = () => {
+  if (!title.value || !description.value) {
+    alert("Fill title and description first")
+    return
+  }
+  showPreview.value = !showPreview.value
+}
+
+// Fake submit
+const handleSubmit = () => {
+  errors.title = ""
+  errors.description = ""
+
+  if (title.value.length < 3) {
+    errors.title = "Title too short"
+    return
+  }
+
+  if (description.value.length < 10) {
+    errors.description = "Description too short"
+    return
+  }
+
+  alert("Blog ready to submit ✅")
+}
 </script>
 
 <template>
-  <transition name="fade-slide" appear>
-    <article
-      class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden card"
-    >
+  <div class="container">
 
-      <!-- Cover Image -->
-      <div class="relative image-wrapper">
-        <img
-          v-if="image"
-          :src="image"
-          :alt="displayTitle"
-          class="w-full h-80 object-cover image"
-        />
+    <div class="header">
+      <h2>Create Blog</h2>
+      <button @click="togglePreview">
+        {{ showPreview ? "Back" : "Preview" }}
+      </button>
+    </div>
 
-        <div
-          v-else
-          class="w-full h-80 bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center"
-        >
-          <span class="text-white/60 text-xl font-bold">No Image</span>
-        </div>
+    <BlogPreview
+      v-if="showPreview"
+      :title="title"
+      :description="description"
+      :image="imagePreview"
+      :author="authorName"
+      :date="currentDate"
+    />
 
-        <!-- Preview Badge -->
-        <div class="absolute top-4 left-4">
-          <span class="px-3 py-1 bg-yellow-400 text-yellow-900 text-sm font-medium rounded-full shadow-md">
-            Preview Mode
-          </span>
-        </div>
-      </div>
+    <div v-else class="editor">
 
-      <!-- Content -->
-      <div class="p-6 md:p-8">
-        
-        <!-- Meta Info -->
-        <div class="flex items-center gap-4 mb-6">
-          <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg shadow-md">
-            {{ authorInitial }}
-          </div>
+      <input
+        v-model="title"
+        placeholder="Blog Title"
+      />
+      <span class="err">{{ errors.title }}</span>
 
-          <div>
-            <p class="font-semibold text-gray-800">{{ author }}</p>
-            <p class="text-sm text-gray-500">{{ date }}</p>
-          </div>
-        </div>
+      <textarea
+        v-model="description"
+        rows="5"
+        placeholder="Blog content..."
+      ></textarea>
+      <span class="err">{{ errors.description }}</span>
 
-        <!-- Title -->
-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4 leading-tight">
-          {{ displayTitle }}
-        </h1>
+      <input type="file" @change="handleImageInput" />
 
-        <!-- Divider -->
-        <div class="w-20 h-1 bg-blue-500 rounded-full mb-6"></div>
+      <img v-if="imagePreview" :src="imagePreview" class="preview" />
 
-        <!-- Description -->
-        <p class="text-gray-600 leading-relaxed whitespace-pre-wrap">
-          {{ displayDescription }}
-        </p>
+      <button @click="handleSubmit">Create Blog</button>
 
-        <!-- Footer Stats -->
-        <div class="flex items-center gap-6 mt-8 pt-6 border-t border-gray-100 text-gray-500">
-          <span>❤️ 0 likes</span>
-          <span>💬 0 comments</span>
-          <span>👁 {{ readTime }} min read</span>
-        </div>
-      </div>
+    </div>
 
-    </article>
-  </transition>
+  </div>
 </template>
 
 <style scoped>
-/* Fade + Slide In Animation */
-.fade-slide-enter-active {
-  transition: all 0.6s ease;
+.container {
+  max-width: 600px;
+  margin: auto;
+  padding: 20px;
 }
 
-.fade-slide-enter-from {
-  opacity: 0;
-  transform: translateY(20px);
+.header {
+  display: flex;
+  justify-content: space-between;
 }
 
-.fade-slide-enter-to {
-  opacity: 1;
-  transform: translateY(0);
+.editor {
+  margin-top: 20px;
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
 }
 
-/* Card Hover Animation */
-.card {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+.preview {
+  width: 100%;
+  margin: 10px 0;
+  border-radius: 8px;
 }
 
-.card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
-}
-
-/* Image Hover Animation */
-.image-wrapper {
-  overflow: hidden;
-}
-
-.image {
-  transition: transform 0.4s ease;
-}
-
-.image-wrapper:hover .image {
-  transform: scale(1.05);
+.err {
+  color: red;
+  font-size: 14px;
 }
 </style>
