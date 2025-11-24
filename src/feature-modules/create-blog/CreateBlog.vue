@@ -6,92 +6,97 @@ import { useCreateBlog } from "./useCreatePost"
 import { useRouter } from "vue-router"
 import { createBlogSchema } from "./createBlog.schema"
 
+// Clerk
 const { user } = useUser()
 const router = useRouter()
 
-const title = ref("")
-const description = ref("")
+// Form state
+const title = ref<string>("")
+const description = ref<string>("")
 const imageFile = ref<File | null>(null)
 const imagePreview = ref<string | null>(null)
 const showPreview = ref(false)
 
-const history = ref<string[]>([])
+// API
+const { mutate: createBlog, isPending } = useCreateBlog()
 
+// Error state
 const errors = reactive({
   title: "",
   description: "",
   image: "",
 })
 
-const { mutate: createBlog, isPending } = useCreateBlog()
+// Computed values
+const authorName = computed<string>(() => {
+  const u = user.value
+  return u?.fullName || u?.firstName || u?.username || "Anonymous"
+})
 
-const currentDate = computed(() =>
-  new Date().toLocaleDateString("en-US", {
+const currentDate = computed<string>(() => {
+  return new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   })
-)
-
-const authorName = computed(() => {
-  const data = user.value
-  return data?.fullName || data?.firstName || data?.username || "Anonymous"
 })
 
-// Undo
-const undo = () => {
-  const last = history.value.pop()
-  if (last) description.value = last
-}
-
-watch(description, (newVal, oldVal) => {
-  history.value.push(oldVal)
-})
-
-// ✅ Auto Save Draft
+// ✅ Auto-save draft
 watch([title, description], () => {
-  localStorage.setItem("blog-draft", JSON.stringify({
+  const draft = {
     title: title.value,
     description: description.value,
-  }))
+  }
+  localStorage.setItem("blog-draft", JSON.stringify(draft))
 })
 
 // ✅ Load draft
 onMounted(() => {
   const draft = localStorage.getItem("blog-draft")
+
   if (draft) {
-    const data = JSON.parse(draft)
-    title.value = data.title
-    description.value = data.description
+    try {
+      const parsed = JSON.parse(draft)
+      title.value = parsed.title || ""
+      description.value = parsed.description || ""
+    } catch {
+      console.warn("Invalid draft data")
+    }
   }
 })
 
-// ✅ Drag & Drop Image
-const handleImage = (file: File) => {
+// ✅ Image upload
+const handleImageInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+
+  if (!file) return
+
   imageFile.value = file
   imagePreview.value = URL.createObjectURL(file)
 }
 
-const handleImageInput = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  if (target.files?.[0]) handleImage(target.files[0])
+// ✅ Remove image
+const removeImage = () => {
+  imageFile.value = null
+  imagePreview.value = null
 }
 
-const onDrop = (e: DragEvent) => {
-  e.preventDefault()
-  const file = e.dataTransfer?.files[0]
-  if (file) handleImage(file)
-}
-
-// Toggle preview
+// ✅ Toggle preview
 const togglePreview = () => {
-  if (!title.value || !description.value) return alert("Fill title & description first")
+  if (!title.value || !description.value) {
+    alert("Please fill in title and description first.")
+    return
+  }
+
   showPreview.value = !showPreview.value
 }
 
-// Submit
+// ✅ Submit
 const handleSubmit = () => {
-  errors.title = errors.description = errors.image = ""
+  errors.title = ""
+  errors.description = ""
+  errors.image = ""
 
   const result = createBlogSchema.safeParse({
     title: title.value,
@@ -103,8 +108,9 @@ const handleSubmit = () => {
   })
 
   if (!result.success) {
-    result.error.issues.forEach((err) => {
-      errors[err.path[0] as keyof typeof errors] = err.message
+    result.error.issues.forEach((issue) => {
+      const field = issue.path[0] as keyof typeof errors
+      errors[field] = issue.message
     })
     return
   }
@@ -118,13 +124,16 @@ const handleSubmit = () => {
       image: imagePreview.value,
       authorName: data.author,
       date: data.date,
-      authorImage: user.value?.imageUrl || ""
+      authorImage: user.value?.imageUrl || "",
     },
     {
       onSuccess: () => {
         localStorage.removeItem("blog-draft")
         router.push("/")
-      }
+      },
+      onError: (error) => {
+        alert("Error creating blog: " + error.message)
+      },
     }
   )
 }
@@ -133,111 +142,81 @@ const handleSubmit = () => {
 <template>
   <div class="page">
 
-    <header class="top">
+    <!-- Header -->
+    <div class="header">
       <h1>Create Blog</h1>
       <button @click="togglePreview">
         {{ showPreview ? "Edit" : "Preview" }}
       </button>
-    </header>
+    </div>
 
-    <transition name="slide-fade" mode="out-in">
-      <BlogPreview
-        v-if="showPreview"
-        :title="title"
-        :description="description"
-        :image="imagePreview"
-        :author="authorName"
-        :date="currentDate"
-      />
+    <!-- Preview Mode -->
+    <BlogPreview
+      v-if="showPreview"
+      :title="title"
+      :description="description"
+      :image="imagePreview"
+      :author="authorName"
+      :date="currentDate"
+    />
 
-      <div v-else class="editor" @drop="onDrop" @dragover.prevent>
+    <!-- Form Mode -->
+    <div v-else class="editor">
 
-        <input v-model="title" placeholder="Title..." />
-        <span class="err">{{ errors.title }}</span>
+      <!-- Title -->
+      <input v-model="title" placeholder="Blog title..." />
+      <p class="err">{{ errors.title }}</p>
 
-        <textarea v-model="description" rows="6" placeholder="Write..."></textarea>
-        <span class="err">{{ errors.description }}</span>
+      <!-- Description -->
+      <textarea v-model="description" rows="5" placeholder="Write description..."></textarea>
+      <p class="err">{{ errors.description }}</p>
 
-        <div class="drop-zone">
-          <input type="file" @change="handleImageInput" />
-          <p>Drag or Upload image</p>
-        </div>
+      <!-- Image -->
+      <input type="file" @change="handleImageInput" />
 
-        <img v-if="imagePreview" :src="imagePreview" class="preview"/>
+      <img v-if="imagePreview" :src="imagePreview" class="preview" />
+      <button v-if="imagePreview" @click="removeImage">Remove Image</button>
 
-        <span class="err">{{ errors.image }}</span>
+      <p class="err">{{ errors.image }}</p>
 
-        <div class="actions">
-          <button @click="undo">Undo</button>
-          <button @click="handleSubmit">
-            {{ isPending ? "Creating..." : "Publish" }}
-          </button>
-        </div>
+      <!-- Submit -->
+      <button @click="handleSubmit">
+        {{ isPending ? "Creating..." : "Publish Blog" }}
+      </button>
 
-      </div>
-    </transition>
-
+    </div>
   </div>
 </template>
 
 <style scoped>
 .page {
-  max-width: 800px;
+  max-width: 700px;
   margin: auto;
   padding: 20px;
 }
 
-.top {
+.header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 .editor {
   background: white;
   padding: 20px;
-  border-radius: 16px;
-  animation: fadeIn .4s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.slide-fade-enter-active,
-.slide-fade-leave-active {
-  transition: .3s ease;
-}
-.slide-fade-enter-from,
-.slide-fade-leave-to {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.drop-zone {
-  border: 2px dashed #aaa;
-  padding: 20px;
-  margin: 10px 0;
-  text-align: center;
-  border-radius: 10px;
-  cursor: pointer;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
 }
 
 .preview {
   width: 100%;
-  border-radius: 10px;
   margin-top: 10px;
+  border-radius: 10px;
 }
 
 .err {
   color: red;
   font-size: 13px;
-}
-
-.actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
+  margin-top: 4px;
 }
 </style>
