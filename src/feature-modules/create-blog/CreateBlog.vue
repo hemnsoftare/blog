@@ -23,7 +23,7 @@ const errors = reactive({
   image: "",
 })
 
-// Date format
+// Date
 const currentDate = computed(() => {
   return new Date().toLocaleDateString("en-US", {
     year: "numeric",
@@ -32,33 +32,31 @@ const currentDate = computed(() => {
   })
 })
 
-// Author
+// Author name
 const authorName = computed(() => {
-  const data = user.value
-  if (!data) return "Anonymous"
-  return data.fullName || data.firstName || data.username || "Anonymous"
+  if (!user.value) return "Anonymous"
+  return user.value.fullName || user.value.firstName || user.value.username || "Anonymous"
 })
 
-// Upload image
+// Image
 const handleImage = (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
-  if (file) {
-    imageFile.value = file
-    imagePreview.value = URL.createObjectURL(file)
-  }
+  if (!file) return
+
+  imageFile.value = file
+  imagePreview.value = URL.createObjectURL(file)
 }
 
-// Remove image
 const removeImage = () => {
   imageFile.value = null
   imagePreview.value = null
 }
 
-// Toggle preview
+// Preview toggle
 const togglePreview = () => {
   if (!title.value || !description.value) {
-    alert("Please fill in title and description to preview.")
+    alert("Fill title and description to preview.")
     return
   }
   showPreview.value = !showPreview.value
@@ -100,30 +98,30 @@ const handleSubmit = () => {
     },
     {
       onSuccess: () => router.push("/"),
-      onError: (error) => alert("Error creating blog: " + error.message),
+      onError: (error) => alert("Error: " + error.message),
     }
   )
 }
 </script>
 
 <template>
-  <div class="min-h-screen py-8 animate-container">
-    <div class="max-w-4xl mx-auto px-4">
+  <div class="page-container">
+    <div class="max-w-4xl mx-auto">
 
       <!-- Header -->
-      <div class="flex items-center justify-between mb-8">
-        <h1 class="text-3xl font-bold text-gray-800 animate-fade">Create a New Blog</h1>
+      <div class="header">
+        <h1>Create a New Blog</h1>
 
-        <button @click="togglePreview" class="btn-animate">
+        <button @click="togglePreview" class="preview-btn">
           {{ showPreview ? "Edit" : "Preview" }}
         </button>
       </div>
 
-      <!-- Switch Animation -->
+      <!-- Switch animation -->
       <transition name="fade-slide" mode="out-in">
+
         <BlogPreview
           v-if="showPreview"
-          :key="'preview'"
           :title="title"
           :description="description"
           :image="imagePreview"
@@ -131,64 +129,54 @@ const handleSubmit = () => {
           :date="currentDate"
         />
 
-        <div
-          v-else
-          :key="'form'"
-          class="bg-white rounded-2xl shadow-sm border p-6 md:p-8"
-        >
+        <div v-else class="form-card">
           <form @submit.prevent="handleSubmit" class="space-y-6">
 
             <!-- Author -->
-            <div class="flex items-center gap-3 pb-4 border-b">
-              <div class="avatar animate-pop">
-                {{ authorName.charAt(0).toUpperCase() }}
-              </div>
+            <div class="author-row">
+              <div class="avatar">{{ authorName.charAt(0) }}</div>
               <div>
-                <p class="font-medium">{{ authorName }}</p>
-                <p class="text-sm text-gray-500">{{ currentDate }}</p>
+                <div class="author-name">{{ authorName }}</div>
+                <div class="date">{{ currentDate }}</div>
               </div>
             </div>
 
             <!-- Title -->
             <div>
-              <input
-                v-model="title"
-                placeholder="Blog Title"
-                class="input-field"
-              />
-              <p v-if="errors.title" class="text-red-500 text-sm">{{ errors.title }}</p>
+              <input v-model="title" placeholder="Enter blog title" class="input-box" />
+              <span class="error" v-if="errors.title">{{ errors.title }}</span>
             </div>
 
             <!-- Image -->
             <div>
-              <div v-if="!imagePreview" class="upload-box">
-                <input type="file" class="hidden" id="img" @change="handleImage" />
-                <label for="img" class="cursor-pointer">Click to upload image</label>
+              <div v-if="!imagePreview" class="upload-card">
+                <input type="file" class="hidden" id="upload" @change="handleImage" />
+                <label for="upload">
+                  Click to upload image
+                </label>
               </div>
 
-              <div v-else class="image-preview">
-                <img :src="imagePreview" class="preview-img" />
+              <div v-else class="image-wrap">
+                <img :src="imagePreview" />
                 <button type="button" @click="removeImage">Remove</button>
               </div>
 
-              <p v-if="errors.image" class="text-red-500 text-sm">{{ errors.image }}</p>
+              <span class="error" v-if="errors.image">{{ errors.image }}</span>
             </div>
 
             <!-- Description -->
             <div>
-              <textarea
-                v-model="description"
-                rows="6"
-                placeholder="Write your blog..."
-                class="textarea-field"
-              ></textarea>
-              <p v-if="errors.description" class="text-red-500 text-sm">{{ errors.description }}</p>
+              <textarea v-model="description" rows="6" class="text-box"></textarea>
+              <span class="error" v-if="errors.description">{{ errors.description }}</span>
             </div>
 
             <!-- Buttons -->
-            <div class="flex gap-3 pt-4">
-              <button type="button" @click="togglePreview" class="btn-secondary">Preview</button>
-              <button type="submit" class="btn-primary">
+            <div class="actions">
+              <button type="button" @click="togglePreview" class="btn secondary">
+                Preview
+              </button>
+
+              <button type="submit" class="btn primary">
                 {{ isPending ? "Creating..." : "Create Blog" }}
               </button>
             </div>
@@ -201,86 +189,122 @@ const handleSubmit = () => {
 </template>
 
 <style scoped>
-/* Overall fade */
-.animate-container {
-  animation: fadeIn 0.6s ease-in-out;
+/* Page entrance */
+.page-container {
+  padding: 3rem 1rem;
+  animation: fadeIn 0.6s ease;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(15px); }
+  from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Transition between views */
+.header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+}
+
+.preview-btn {
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: #2563eb;
+  color: white;
+  transition: transform .2s ease;
+}
+.preview-btn:hover { transform: scale(1.05); }
+
 .fade-slide-enter-active,
 .fade-slide-leave-active {
-  transition: all 0.4s ease;
+  transition: 0.4s ease all;
 }
 .fade-slide-enter-from {
   opacity: 0;
-  transform: translateY(20px);
+  transform: translateY(15px);
 }
 .fade-slide-leave-to {
   opacity: 0;
-  transform: translateY(-20px);
+  transform: translateY(-15px);
 }
 
-/* Button animation */
-.btn-animate {
-  padding: 8px 16px;
+.form-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+}
+
+.avatar {
   background: #2563eb;
   color: white;
-  border-radius: 10px;
-  transition: transform 0.2s ease, background 0.2s ease;
-}
-.btn-animate:hover {
-  transform: scale(1.05);
-  background: #1d4ed8;
-}
-.btn-animate:active {
-  transform: scale(0.95);
+  border-radius: 999px;
+  width: 40px;
+  height: 40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
 }
 
-/* Avatar animation */
-.animate-pop {
-  animation: pop 0.5s ease;
-}
-@keyframes pop {
-  from { transform: scale(0.7); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+.author-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
-/* Image hover */
-.preview-img {
-  width: 100%;
-  border-radius: 12px;
-  transition: transform 0.4s ease;
-}
-.preview-img:hover {
-  transform: scale(1.05);
-}
-
-/* Inputs */
-.input-field, .textarea-field {
+.input-box,
+.text-box {
   width: 100%;
   padding: 12px;
+  border-radius: 12px;
   border: 1px solid #ddd;
-  border-radius: 12px;
 }
 
-/* Buttons */
-.btn-primary {
+.upload-card {
+  padding: 1rem;
+  border: 2px dashed #ccc;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.image-wrap img {
+  width: 100%;
+  border-radius: 15px;
+  transition: transform 0.3s;
+}
+.image-wrap img:hover {
+  transform: scale(1.05);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  transition: transform 0.2s;
+}
+
+.btn:hover { transform: scale(1.03); }
+
+.primary {
   background: #2563eb;
   color: white;
-  padding: 12px;
-  border-radius: 12px;
-  width: 100%;
 }
 
-.btn-secondary {
-  background: #f1f5f9;
-  padding: 12px;
-  border-radius: 12px;
-  width: 100%;
+.secondary {
+  background: #f3f4f6;
+}
+
+.error {
+  color: red;
+  font-size: 0.875rem;
+  margin-top: 5px;
+  display: block;
 }
 </style>
