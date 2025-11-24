@@ -1,78 +1,51 @@
 <!-- Path: feature-modules/information/About.vue -->
 <template>
   <div class="w-full min-h-screen bg-white text-blue-600 overflow-hidden">
-
-    <!-- Hero -->
-    <div ref="heroRef">
-      <HeroAbout />
+    <div v-for="(section, i) in sections" :key="i" :ref="section.ref">
+      <component :is="section.component" />
     </div>
-
-    <!-- Part 1 -->
-    <div ref="sec1Ref">
-      <PartOne />
-    </div>
-
-    <!-- Part 2 -->
-    <div ref="sec2Ref">
-      <PartTwo />
-    </div>
-
-    <!-- Part 3 -->
-    <div ref="sec3Ref">
-      <PartThree />
-    </div>
-
-    <!-- Part 4 -->
-    <div ref="sec4Ref">
-      <PartFour />
-    </div>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import gsap from 'gsap'
-import ScrollTrigger from 'gsap/ScrollTrigger'
+import { ref, onMounted } from "vue";
+import gsap from "gsap";
+import ScrollTrigger from "gsap/ScrollTrigger";
 
 // Register GSAP plugin
-gsap.registerPlugin(ScrollTrigger)
+gsap.registerPlugin(ScrollTrigger);
 
-// Import sections
-import HeroAbout from './components/about/HeroAbout.vue'
-import PartOne from './components/about/SEC_one.vue'
-import PartTwo from './components/about/SEC_tow.vue'
-import PartThree from './components/about/SEC_three.vue'
-import PartFour from './components/about/SEC_four.vue'
+// Import section components
+import HeroAbout from "./components/about/HeroAbout.vue";
+import PartOne from "./components/about/SEC_one.vue";
+import PartTwo from "./components/about/SEC_tow.vue";
+import PartThree from "./components/about/SEC_three.vue";
+import PartFour from "./components/about/SEC_four.vue";
 
-// Refs for scroll animations
-const heroRef = ref<HTMLElement | null>(null)
-const sec1Ref = ref<HTMLElement | null>(null)
-const sec2Ref = ref<HTMLElement | null>(null)
-const sec3Ref = ref<HTMLElement | null>(null)
-const sec4Ref = ref<HTMLElement | null>(null)
+// Create a typed section list
+const sections = [
+  { ref: ref<HTMLElement | null>(null), component: HeroAbout },
+  { ref: ref<HTMLElement | null>(null), component: PartOne },
+  { ref: ref<HTMLElement | null>(null), component: PartTwo },
+  { ref: ref<HTMLElement | null>(null), component: PartThree },
+  { ref: ref<HTMLElement | null>(null), component: PartFour }
+];
 
 onMounted(() => {
-  const sections = [
-    heroRef,
-    sec1Ref,
-    sec2Ref,
-    sec3Ref,
-    sec4Ref
-  ]
+  sections.forEach(({ ref }) => {
+    if (!ref.value) return;
 
-  sections.forEach((sec) => {
-    gsap.from(sec.value, {
+    gsap.from(ref.value, {
       opacity: 0,
       y: 60,
       duration: 1,
-      ease: 'power3.out',
+      ease: "power3.out",
       scrollTrigger: {
-        trigger: sec.value,
-        start: 'top 80%',
-        toggleActions: 'play none none reverse'
+        trigger: ref.value,
+        start: "top 80%",
+        toggleActions: "play none none reverse"
       }
-    })
-  })
-})
+    });
+  });
+});
 </script>
