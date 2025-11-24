@@ -1,42 +1,41 @@
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted } from "vue"
+import { ref, computed, reactive, onMounted, watch } from "vue"
 import { useUser } from "@clerk/vue"
 import BlogPreview from "./compoennt/BlogPreview.vue"
 import { useCreateBlog } from "./useCreatePost"
 import { useRouter } from "vue-router"
 import { createBlogSchema } from "./createBlog.schema"
+import { marked } from "marked"
 
 const { user } = useUser()
 const router = useRouter()
 
+// Form state
 const title = ref("")
 const description = ref("")
 const imageFile = ref<File | null>(null)
 const imagePreview = ref<string | null>(null)
 const showPreview = ref(false)
-const isMounted = ref(false)
+const darkMode = ref(false)
 
+// API
 const { mutate: createBlog, isPending } = useCreateBlog()
 
+// Errors
 const errors = reactive({
   title: "",
   description: "",
   image: "",
 })
 
-// Fade-in after mount
-onMounted(() => {
-  isMounted.value = true
-})
-
 // Date
-const currentDate = computed(() => {
-  return new Date().toLocaleDateString("en-US", {
+const currentDate = computed(() =>
+  new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
-    day: "numeric"
+    day: "numeric",
   })
-})
+)
 
 // Author
 const authorName = computed(() => {
@@ -44,14 +43,45 @@ const authorName = computed(() => {
   return user.value.fullName || user.value.firstName || user.value.username || "Anonymous"
 })
 
-// Image handling
-const handleImage = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
+// Markdown rendering
+const markdownPreview = computed(() => marked(description.value))
 
+// ✅ Auto Save Draft
+watch([title, description], () => {
+  const draft = {
+    title: title.value,
+    description: description.value,
+  }
+  localStorage.setItem("blog-draft", JSON.stringify(draft))
+})
+
+// ✅ Load Draft
+onMounted(() => {
+  const saved = localStorage.getItem("blog-draft")
+  if (saved) {
+    const draft = JSON.parse(saved)
+    title.value = draft.title
+    description.value = draft.description
+  }
+})
+
+// ✅ Handle Image Upload + Drag & Drop
+const handleImage = (file: File) => {
   imageFile.value = file
   imagePreview.value = URL.createObjectURL(file)
+}
+
+const handleImageInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target.files?.[0]) {
+    handleImage(target.files[0])
+  }
+}
+
+const onDrop = (event: DragEvent) => {
+  event.preventDefault()
+  const file = event.dataTransfer?.files[0]
+  if (file) handleImage(file)
 }
 
 const removeImage = () => {
@@ -59,16 +89,21 @@ const removeImage = () => {
   imagePreview.value = null
 }
 
-// Toggle preview
+// ✅ Toggle Preview Mode
 const togglePreview = () => {
   if (!title.value || !description.value) {
-    alert("Please complete title and description to preview.")
+    alert("Fill title and description to preview.")
     return
   }
   showPreview.value = !showPreview.value
 }
 
-// Submit
+// ✅ Dark Mode Toggle
+const toggleTheme = () => {
+  darkMode.value = !darkMode.value
+}
+
+// ✅ Submit
 const handleSubmit = () => {
   errors.title = ""
   errors.description = ""
@@ -91,259 +126,204 @@ const handleSubmit = () => {
     return
   }
 
-  const validatedData = result.data
+  const validated = result.data
 
   createBlog(
     {
-      title: validatedData.title,
-      content: validatedData.description,
+      title: validated.title,
+      content: validated.description,
       image: imagePreview.value,
-      authorName: validatedData.author,
-      date: validatedData.date,
+      authorName: validated.author,
+      date: validated.date,
       authorImage: user.value?.imageUrl || ""
     },
     {
-      onSuccess: () => router.push("/"),
-      onError: (e) => alert("Error creating blog: " + e.message)
+      onSuccess: () => {
+        localStorage.removeItem("blog-draft")
+        router.push("/")
+      },
+      onError: (err) => alert("Error creating blog: " + err.message),
     }
   )
 }
 </script>
 
 <template>
-  <div :class="['page', isMounted && 'visible']">
-    <div class="container">
+  <div :class="['page', darkMode && 'dark']">
 
-      <!-- Header -->
-      <div class="header">
-        <div>
-          <h1>Create a New Blog</h1>
-          <p>Write something beautiful ✍️</p>
+    <!-- Header -->
+    <div class="top-bar">
+      <h1>Create a Blog</h1>
+
+      <div class="actions">
+        <button @click="toggleTheme">{{ darkMode ? "Light Mode" : "Dark Mode" }}</button>
+        <button @click="togglePreview">{{ showPreview ? "Edit" : "Preview" }}</button>
+      </div>
+    </div>
+
+    <!-- Switch Preview -->
+    <transition name="fade" mode="out-in">
+      <BlogPreview
+        v-if="showPreview"
+        :title="title"
+        :description="description"
+        :image="imagePreview"
+        :author="authorName"
+        :date="currentDate"
+      />
+
+      <div v-else class="editor">
+
+        <!-- Author -->
+        <div class="author">
+          <div class="avatar">{{ authorName.charAt(0) }}</div>
+          <div>
+            <b>{{ authorName }}</b>
+            <span>{{ currentDate }}</span>
+          </div>
         </div>
 
-        <button class="preview-toggle" @click="togglePreview">
-          {{ showPreview ? "Edit" : "Preview" }}
+        <!-- Title -->
+        <input v-model="title" class="input" placeholder="Blog title..." />
+        <span v-if="errors.title" class="error">{{ errors.title }}</span>
+
+        <!-- Image Drop -->
+        <div
+          class="drop-zone"
+          @drop="onDrop"
+          @dragover.prevent
+        >
+          <input type="file" @change="handleImageInput" hidden id="upload"/>
+          <label for="upload">Drag or click to upload image</label>
+        </div>
+
+        <div v-if="imagePreview">
+          <img :src="imagePreview" class="image-preview"/>
+          <button @click="removeImage">Remove Image</button>
+        </div>
+
+        <span v-if="errors.image" class="error">{{ errors.image }}</span>
+
+        <!-- Description -->
+        <textarea v-model="description" rows="6" class="textarea" placeholder="Write markdown..."></textarea>
+        <span v-if="errors.description" class="error">{{ errors.description }}</span>
+
+        <!-- Markdown Preview -->
+        <div class="markdown-preview">
+          <h3>Live Markdown Preview</h3>
+          <div v-html="markdownPreview"></div>
+        </div>
+
+        <!-- Button -->
+        <button @click="handleSubmit" class="publish-btn">
+          {{ isPending ? "Publishing..." : "Publish Blog" }}
         </button>
       </div>
-
-      <transition name="view-switch" mode="out-in">
-
-        <!-- Preview Mode -->
-        <BlogPreview
-          v-if="showPreview"
-          :title="title"
-          :description="description"
-          :image="imagePreview"
-          :author="authorName"
-          :date="currentDate"
-        />
-
-        <!-- Form Mode -->
-        <div v-else class="editor-card">
-
-          <!-- User Info -->
-          <div class="user-bar">
-            <div class="avatar">
-              {{ authorName.charAt(0).toUpperCase() }}
-            </div>
-            <div>
-              <p class="name">{{ authorName }}</p>
-              <span class="date">{{ currentDate }}</span>
-            </div>
-          </div>
-
-          <form @submit.prevent="handleSubmit" class="form">
-
-            <!-- Title -->
-            <div>
-              <input
-                v-model="title"
-                placeholder="Enter blog title..."
-                class="input"
-              />
-              <span class="err" v-if="errors.title">{{ errors.title }}</span>
-            </div>
-
-            <!-- Image Upload -->
-            <div>
-              <div v-if="!imagePreview" class="drop-box">
-                <label for="imgUpload">Upload a cover image</label>
-                <input id="imgUpload" type="file" hidden @change="handleImage" />
-              </div>
-
-              <div v-else class="image-preview">
-                <img :src="imagePreview" />
-                <button type="button" class="remove-btn" @click="removeImage">
-                  Remove
-                </button>
-              </div>
-
-              <span class="err" v-if="errors.image">{{ errors.image }}</span>
-            </div>
-
-            <!-- Description -->
-            <div>
-              <textarea
-                v-model="description"
-                rows="6"
-                placeholder="Write something meaningful..."
-                class="textarea"
-              />
-              <span class="char-count">{{ description.length }} chars</span>
-              <span class="err" v-if="errors.description">{{ errors.description }}</span>
-            </div>
-
-            <!-- Actions -->
-            <div class="actions">
-              <button type="button" class="ghost" @click="togglePreview">
-                Preview
-              </button>
-
-              <button type="submit" class="primary">
-                {{ isPending ? "Publishing…" : "Publish Blog" }}
-              </button>
-            </div>
-
-          </form>
-        </div>
-      </transition>
-    </div>
+    </transition>
   </div>
 </template>
 
 <style scoped>
 .page {
-  min-height: 100vh;
-  padding: 2rem 1rem;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: 0.6s ease;
-}
-.page.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.container {
   max-width: 850px;
   margin: auto;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 2rem;
-}
-
-.preview-toggle {
-  background: #2563eb;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 8px;
-  transition: 0.2s;
-}
-.preview-toggle:hover { transform: scale(1.05); }
-
-.view-switch-enter-active,
-.view-switch-leave-active {
-  transition: 0.4s ease;
-}
-.view-switch-enter-from {
-  opacity: 0;
-  transform: translateY(20px);
-}
-.view-switch-leave-to {
-  opacity: 0;
-  transform: translateY(-20px);
-}
-
-.editor-card {
-  background: white;
   padding: 2rem;
-  border-radius: 20px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  transition: 0.3s;
 }
-
-.user-bar {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.avatar {
-  background: #2563eb;
+.dark {
+  background: #0f172a;
   color: white;
-  height: 42px;
-  width: 42px;
-  border-radius: 20px;
+}
+
+.top-bar {
   display:flex;
+  justify-content: space-between;
   align-items:center;
-  justify-content:center;
-  font-weight:bold;
+  margin-bottom: 1.5rem;
+}
+
+.editor {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 25px rgba(0,0,0,.1);
+}
+
+.dark .editor {
+  background: #1e293b;
 }
 
 .input, .textarea {
   width: 100%;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  margin: 10px 0;
+  border: 1px solid #ccc;
 }
 
-.drop-box {
-  border: 2px dashed #ccc;
-  padding: 30px;
-  text-align:center;
-  border-radius: 12px;
+.drop-zone {
+  border: 2px dashed #aaa;
+  padding: 25px;
+  text-align: center;
+  border-radius: 10px;
+  margin: 10px 0;
   cursor: pointer;
 }
 
-.image-preview img {
+.image-preview {
   width: 100%;
   border-radius: 12px;
-  transition: transform .3s;
-}
-.image-preview img:hover {
-  transform: scale(1.04);
+  margin-top: 10px;
 }
 
-.remove-btn {
-  margin-top: 8px;
-  color: red;
+.author {
+  display:flex;
+  gap:10px;
+  margin-bottom: 10px;
 }
 
-.actions {
-  display: flex;
-  gap: 10px;
+.avatar {
+  background: #2563eb;
+  color:white;
+  padding:10px;
+  border-radius:50%;
+  font-weight:bold;
+}
+
+.markdown-preview {
   margin-top: 20px;
+  padding: 10px;
+  background: #f1f5f9;
+  border-radius: 8px;
 }
 
-.primary {
-  flex: 1;
+.dark .markdown-preview {
+  background: #334155;
+}
+
+.error {
+  color: red;
+  font-size: .9rem;
+}
+
+.publish-btn {
+  margin-top: 15px;
+  width: 100%;
+  padding: 12px;
   background: #2563eb;
   color: white;
-  padding: 12px;
-  border-radius: 12px;
+  border-radius: 10px;
+  transition:.2s;
+}
+.publish-btn:hover {
+  transform: scale(1.02);
 }
 
-.ghost {
-  flex: 1;
-  background: #f1f5f9;
-  padding: 12px;
-  border-radius: 12px;
+.fade-enter-active, .fade-leave-active {
+  transition: .25s;
 }
-
-.err {
-  color: red;
-  font-size: 0.85rem;
-  margin-top: 5px;
-  display: block;
-}
-
-.char-count {
-  font-size: 0.8rem;
-  color: gray;
-  display: block;
-  text-align: right;
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
 }
 </style>
