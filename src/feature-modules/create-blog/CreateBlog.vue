@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted, watch } from "vue"
 import { useUser } from "@clerk/vue"
-import BlogPreview from "./compoennt/BlogPreview.vue"
+import BlogPreview from "./component/BlogPreview.vue"
 import { useCreateBlog } from "./useCreatePost"
 import { useRouter } from "vue-router"
 import { createBlogSchema } from "./createBlog.schema"
 import { FormInput, FormTextarea, FormButton, ErrorMessage } from "../auth/component"
+import { uploadBlogImage } from "./utils/imageUpload"
 
 // Clerk
 const { user } = useUser()
@@ -36,12 +37,16 @@ const authorName = computed<string>(() => {
   return u?.fullName || u?.firstName || u?.username || "Anonymous"
 })
 
+const authorId = computed<string>(() => {
+  return user.value?.id || "anonymous"
+})
+
+const authorImage = computed<string>(() => {
+  return user.value?.imageUrl || ""
+})
+
 const currentDate = computed<string>(() => {
-  return new Date().toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
+  return new Date().toISOString()
 })
 
 // ✅ Auto-save draft
@@ -101,12 +106,29 @@ const togglePreview = () => {
 }
 
 // ✅ Submit
-const handleSubmit = () => {
+const handleSubmit = async () => {
   errors.title = ""
   errors.description = ""
   errors.image = ""
   generalError.value = ""
 
+  // Validate form
+  if (!title.value.trim()) {
+    errors.title = "Title is required"
+    return
+  }
+
+  if (!description.value.trim()) {
+    errors.description = "Content is required"
+    return
+  }
+
+  if (!imageFile.value) {
+    errors.image = "Image is required"
+    return
+  }
+
+  // Validate with schema
   const result = createBlogSchema.safeParse({
     title: title.value,
     description: description.value,
@@ -128,27 +150,43 @@ const handleSubmit = () => {
     return
   }
 
-  const data = result.data
+  try {
+    // Upload image to Firebase Storage first
+    generalError.value = "Uploading image..."
+    const imageUrl = await uploadBlogImage(
+      imageFile.value,
+      authorId.value,
+      undefined // No postId for new posts
+    )
 
-  createBlog(
-    {
-      title: data.title,
-      content: data.description,
-      image: imagePreview.value,
-      authorName: data.author,
-      date: data.date,
-      authorImage: user.value?.imageUrl || "",
-    },
-    {
-      onSuccess: () => {
-        localStorage.removeItem("blog-draft")
-        router.push("/")
+    // Create blog post with image URL
+    createBlog(
+      {
+        title: result.data.title,
+        content: result.data.description, // Map description to content
+        image: imageUrl, // Use uploaded image URL
+        authorId: authorId.value,
+        authorName: result.data.author,
+        authorImage: authorImage.value,
       },
-      onError: (error) => {
-        generalError.value = "Error creating blog: " + error.message
-      },
-    }
-  )
+      {
+        onSuccess: () => {
+          localStorage.removeItem("blog-draft")
+          // Clean up object URL
+          if (imagePreview.value && imagePreview.value.startsWith("blob:")) {
+            URL.revokeObjectURL(imagePreview.value)
+          }
+          router.push("/")
+        },
+        onError: (error) => {
+          generalError.value = "Error creating blog: " + (error.message || "Unknown error")
+        },
+      }
+    )
+  } catch (error: any) {
+    generalError.value = error.message || "Failed to upload image. Please try again."
+    console.error("Error uploading image:", error)
+  }
 }
 </script>
 
@@ -178,14 +216,14 @@ const handleSubmit = () => {
     </div>
 
     <!-- Preview Mode -->
-    <BlogPreview
-      v-if="showPreview"
-      :title="title"
-      :description="description"
-      :image="imagePreview"
-      :author="authorName"
-      :date="currentDate"
-    />
+      <BlogPreview
+        v-if="showPreview"
+        :title="title"
+        :description="description"
+        :image="imagePreview"
+        :author="authorName"
+        :date="new Date(currentDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })"
+      />
 
     <!-- Form Mode -->
     <div v-else class="editor">
