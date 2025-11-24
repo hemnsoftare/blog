@@ -1,62 +1,177 @@
 <template>
-  <div class="signup-container">
-    <form class="signup-card" @submit.prevent="handleSignup">
-      <h2>Create Account</h2>
+  <AuthCard
+    title="Create Account"
+    subtitle="Join us and start your journey"
+  >
+    <form @submit.prevent="handleSignup">
+      <FormInput
+        v-model="formData.username"
+        label="Username"
+        type="text"
+        placeholder="Choose a username"
+        :error="errors.username"
+        :required="true"
+      />
 
-      <input v-model="username" type="text" placeholder="Username" required />
-      <input v-model="email" type="email" placeholder="Email" required />
-      <input v-model="password" type="password" placeholder="Password" required />
-      <input v-model="confirmPassword" type="password" placeholder="Confirm Password" required />
+      <FormInput
+        v-model="formData.email"
+        label="Email"
+        type="email"
+        placeholder="your@email.com"
+        :error="errors.email"
+        :required="true"
+      />
 
-      <p v-if="error" class="error">{{ error }}</p>
+      <FormInput
+        v-model="formData.password"
+        label="Password"
+        type="password"
+        placeholder="Create a secure password"
+        :error="errors.password"
+        :required="true"
+      />
 
-      <button :disabled="loading">
-        {{ loading ? "Creating your account..." : "Sign Up" }}
-      </button>
+      <PasswordStrength
+        v-if="formData.password"
+        :password="formData.password"
+        :min-length="6"
+      />
 
-      <p class="login-link">
-        Already have an account?
-        <router-link to="/login">Sign In</router-link>
-      </p>
+      <FormInput
+        v-model="formData.confirmPassword"
+        label="Confirm Password"
+        type="password"
+        placeholder="Confirm your password"
+        :error="errors.confirmPassword"
+        :required="true"
+      />
+
+      <ErrorMessage
+        v-if="generalError"
+        :message="generalError"
+        variant="error"
+        :dismissible="true"
+        @dismiss="generalError = ''"
+      />
+
+      <FormButton
+        type="submit"
+        variant="primary"
+        :loading="loading"
+        full-width
+        size="lg"
+      >
+        Create Account
+      </FormButton>
+
+      <SocialAuth
+        :loading="loading"
+        @social-login="handleSocialLogin"
+      />
     </form>
-  </div>
+
+    <template #footer>
+      <p>
+        Already have an account?
+        <router-link to="/login" class="auth-link">Sign In</router-link>
+      </p>
+    </template>
+  </AuthCard>
 </template>
 
-<script setup>
-import { ref } from "vue"
+<script setup lang="ts">
+import { ref, reactive } from "vue"
 import { useRouter } from "vue-router"
 import axios from "axios"
+import {
+  AuthCard,
+  FormInput,
+  FormButton,
+  PasswordStrength,
+  ErrorMessage,
+  SocialAuth
+} from "./component"
 
 const router = useRouter()
 
-const username = ref("")
-const email = ref("")
-const password = ref("")
-const confirmPassword = ref("")
-const error = ref("")
+const formData = reactive({
+  username: "",
+  email: "",
+  password: "",
+  confirmPassword: ""
+})
+
+const errors = reactive({
+  username: "",
+  email: "",
+  password: "",
+  confirmPassword: ""
+})
+
+const generalError = ref("")
 const loading = ref(false)
 
-const handleSignup = async () => {
-  error.value = ""
+const validateForm = (): boolean => {
+  let isValid = true
 
-  // Validation
-  if (password.value !== confirmPassword.value) {
-    error.value = "Passwords do not match"
-    return
+  // Reset errors
+  Object.keys(errors).forEach(key => {
+    errors[key as keyof typeof errors] = ""
+  })
+  generalError.value = ""
+
+  // Username validation
+  if (!formData.username.trim()) {
+    errors.username = "Username is required"
+    isValid = false
+  } else if (formData.username.length < 3) {
+    errors.username = "Username must be at least 3 characters"
+    isValid = false
   }
 
-  if (password.value.length < 6) {
-    error.value = "Password must be at least 6 characters"
+  // Email validation
+  if (!formData.email.trim()) {
+    errors.email = "Email is required"
+    isValid = false
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    errors.email = "Please enter a valid email address"
+    isValid = false
+  }
+
+  // Password validation
+  if (!formData.password) {
+    errors.password = "Password is required"
+    isValid = false
+  } else if (formData.password.length < 6) {
+    errors.password = "Password must be at least 6 characters"
+    isValid = false
+  }
+
+  // Confirm password validation
+  if (!formData.confirmPassword) {
+    errors.confirmPassword = "Please confirm your password"
+    isValid = false
+  } else if (formData.password !== formData.confirmPassword) {
+    errors.confirmPassword = "Passwords do not match"
+    isValid = false
+  }
+
+  return isValid
+}
+
+const handleSignup = async () => {
+  if (!validateForm()) {
     return
   }
 
   loading.value = true
+  generalError.value = ""
 
   try {
     const response = await axios.post("https://yourapi.com/signup", {
-      username: username.value.trim(),
-      email: email.value.trim(),
-      password: password.value
+      username: formData.username.trim(),
+      email: formData.email.trim(),
+      password: formData.password
     })
 
     console.log("Signup successful:", response.data)
@@ -64,78 +179,30 @@ const handleSignup = async () => {
     // Redirect to login page
     router.push("/login")
 
-  } catch (err) {
-    error.value = err.response?.data?.message || "Signup failed. Try again."
+  } catch (err: any) {
+    generalError.value = err.response?.data?.message || "Signup failed. Please try again."
   } finally {
     loading.value = false
   }
 }
+
+const handleSocialLogin = (provider: string) => {
+  console.log(`Social login with ${provider}`)
+  // Implement social login logic here
+  // This would typically redirect to OAuth provider
+}
 </script>
 
 <style scoped>
-.signup-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background: #f8fafc;
+.auth-link {
+  color: #10b981;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s;
 }
 
-.signup-card {
-  background: white;
-  padding: 25px;
-  width: 350px;
-  border-radius: 10px;
-  box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-}
-
-.signup-card h2 {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-input {
-  width: 100%;
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid #cbd5e1;
-  margin-bottom: 10px;
-  outline: none;
-}
-
-input:focus {
-  border-color: #10b981;
-}
-
-button {
-  width: 100%;
-  padding: 10px;
-  background: #10b981;
-  color: white;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  font-weight: bold;
-  transition: 0.3s;
-}
-
-button:hover {
-  background: #059669;
-}
-
-button:disabled {
-  background: #9ca3af;
-  cursor: not-allowed;
-}
-
-.error {
-  color: #dc2626;
-  margin-bottom: 10px;
-  text-align: center;
-}
-
-.login-link {
-  text-align: center;
-  margin-top: 10px;
+.auth-link:hover {
+  color: #059669;
+  text-decoration: underline;
 }
 </style>
